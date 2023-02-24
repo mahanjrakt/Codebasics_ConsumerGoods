@@ -1,0 +1,84 @@
+--  To find the product codes not available for sales in fiscal_year 2021.
+	SELECT product_code,cost_year
+	FROM fact_manufacturing_cost
+	WHERE product_code NOT IN (SELECT DISTINCT product_code 
+							FROM fact_sales_monthly
+                            WHERE fiscal_year = 2021)
+
+	product_code	cost_year
+	A0418150101	2020
+	A0418150102	2020
+	A0418150107	2020
+	A0418150108	2020
+	A3718150104	2020
+	A4118110101	2020
+	A4118110102	2020
+	A4118110103	2020
+	A4118110104	2020
+	A5119110304	2020
+	A5219110404	2020
+	A5318110101	2020
+	A5318110102	2020
+
+
+-- To find the products available in products table but not manufactured in fiscal years 2020 and 2021.
+-- These are planned for the upcoming fiscal year.
+
+	SELECT  DISTINCT p.product_code,p.product,p.variant,p.segment,p.category
+    	FROM dim_product p LEFT JOIN fact_sales_monthly s
+    	ON p.product_code =s.product_code
+    	WHERE s.date IS NULL
+
+
+
+	product_code	product	segment	variant
+	A0921150602	AQ Marquee P4	Peripherals	Plus 1
+	A0921150603	AQ Marquee P4	Peripherals	Plus 2
+	A0921150604	AQ Marquee P4	Peripherals	Premium
+	A1521150603	AQ Electron 3 3600 Desktop Processor	Peripherals	Premium
+	A2021150504	AQ MB Lito 2	Peripherals	Premium
+	A2821150802	AQ Lumina Ms	Accessories	Standard 2
+	A2821150803	AQ Lumina Ms	Accessories	Plus 1
+	A2821150804	AQ Lumina Ms	Accessories	Plus 2
+	A2821150805	AQ Lumina Ms	Accessories	Premium 1
+	A2821150806	AQ Lumina Ms	Accessories	Premium 2
+	A3521150706	AQ Trigger	Accessories	Premium 2
+	A3621150801	AQ Lumina	Accessories	Standard 1
+	A3621150802	AQ Lumina	Accessories	Standard 2
+	A3621150803	AQ Lumina	Accessories	Plus 1
+	A3621150804	AQ Lumina	Accessories	Plus 2
+	A3621150805	AQ Lumina	Accessories	Premium 1
+	A3621150806	AQ Lumina	Accessories	Premium 2
+	A4721110706	AQ GEN Z	Notebook	Plus Red
+	A4721110707	AQ GEN Z	Notebook	Premium Black
+	A4721110708	AQ GEN Z	Notebook	Premium Misty Green
+	A4821110801	AQ F16	Notebook	Standard Grey
+	A4821110802	AQ F16	Notebook	Standard Blue
+	A4821110803	AQ F16	Notebook	Standard Red
+	A4821110804	AQ F16	Notebook	Plus Grey
+	A4821110805	AQ F16	Notebook	Plus Blue
+	A4821110806	AQ F16	Notebook	Plus Red
+	A4821110807	AQ F16	Notebook	Premium Black
+	A4821110808	AQ F16	Notebook	Premium Misty Green
+	A5721110507	AQ Smash 2	Notebook	Premium Black
+	A5721110508	AQ Smash 2	Notebook	Premium Misty Green
+	A5921110201	AQ BZ Allin1 Gen 2	Desktop	Standard 1
+	A5921110202	AQ BZ Allin1 Gen 2	Desktop	Standard 2
+	A5921110203	AQ BZ Allin1 Gen 2	Desktop	Standard 3
+	A5921110204	AQ BZ Allin1 Gen 2	Desktop	Plus 1
+	A5921110205	AQ BZ Allin1 Gen 2	Desktop	Plus 2
+	A5921110206	AQ BZ Allin1 Gen 2	Desktop	Plus 3
+	A5921110207	AQ BZ Allin1 Gen 2	Desktop	Premium 1
+	A5921110208	AQ BZ Allin1 Gen 2	Desktop	Premium 2
+	A6120110207	AQ HOME Allin1 Gen 2	Desktop	Premium 1
+	A6121110208	AQ HOME Allin1 Gen 2	Desktop	Premium 2
+	A6620160502	AQ Clx3	Storage	Plus
+	A6621160503	AQ Clx3	Storage	Premium
+	A6718160102	AQ Pen Drive 2 IN 1	Storage	Plus
+	A6719160101	AQ Pen Drive 2 IN 1	Storage	Standard
+	A6918160303	AQ Ultra Dual 2.0	Storage	Premium
+	A6919160302	AQ Ultra Dual 2.0	Storage	Plus
+	A6921160301	AQ Ultra Dual 2.0	Storage	Standard
+	A7018160402	AQ Ultra Dual 3.0	Storage	Plus
+	A7019160401	AQ Ultra Dual 3.0	Storage	Standard
+	A7020160403	AQ Ultra Dual 3.0	Storage	Premium

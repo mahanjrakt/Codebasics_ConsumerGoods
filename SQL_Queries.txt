@@ -1,0 +1,255 @@
+
+
+1. Provide the list of markets in which customer "Atliq Exclusive" operates its
+   business in the APAC region.
+
+	SELECT distinct market
+        FROM dim_customer
+        WHERE customer = 'Atliq Exclusive'
+        AND region = 'APAC';
+
+
+2.What is the percentage of unique product increase in 2021 vs. 2020? Thefinal output contains these fields,
+	unique_products_2020
+	unique_products_2021
+	percentage_chg
+
+	-- Step 1: Get the count of unique product codes for fiscal years 2020 and 2021. Use CASE WHEN for separting the rows and getting the count
+
+	WITH test_table AS(
+	SELECT SUM(CASE WHEN n.fiscal_year = 2020 THEN 1 ELSE 0 END ) AS unique_products_2020,
+	SUM(CASE WHEN n.fiscal_year = 2021 THEN 1 ELSE 0 END) AS unique_products_2021
+	FROM (SELECT distinct product_code,fiscal_year
+	FROM fact_sales_monthly)  AS n)
+
+	-- Step2:Find the percentage change as,
+	-- %change = 100X(unique product count in 2021-unique product count in 2022)/unique product count in 2020
+
+	SELECT unique_products_2020,unique_products_2021,
+	ROUND(100.0*(unique_products_2021-unique_products_2020)/unique_products_2020,2) AS percentage_chg
+	FROM test_table
+
+
+3.Provide a report with all the unique product counts for each segment and sort them in descending order of product counts. The final output contains
+	2 fields,
+	segment
+	product_count
+
+	SELECT segment, COUNT(distinct product_code) AS product_count
+	FROM dim_product
+	GROUP BY segment
+	ORDER BY product_count DESC
+
+4.Follow-up: Which segment had the most increase in unique products in 2021 vs 2020? The final output contains these fields,
+	segment
+	product_count_2020
+	product_count_2021
+	difference
+	
+	-- Step 1:Bring the segment information and fiscal_year information together by inner joining 
+	-- dim_product and fact_sales_monthly tables.From this data set, query for unique product counts for 
+	-- fiscal year 2020 and 2021 along with segment.  
+
+	WITH segment_table AS(
+	SELECT SUM(CASE WHEN t.fiscal_year = 2020 THEN 1 ELSE 0 END) AS product_count_2020,
+	SUM(CASE WHEN t.fiscal_year = 2021 THEN 1 ELSE 0 END) AS product_count_2021,t.segment AS segment
+	FROM
+	(SELECT distinct p.product_code, s.fiscal_year, p.segment
+	FROM dim_product p INNER JOIN fact_sales_monthly s
+	ON p.product_code = s.product_code) AS t
+	GROUP BY t.segment)
+
+	--Step 2: Use the above data set as a CTE and query for product count 2020,product count 2021,segment 
+	--and difference in product counts from the CTE
+	
+	SELECT segment,product_count_2020,product_count_2021,(product_count_2021-product_count_2020) AS difference
+	FROM segment_table
+	ORDER BY difference
+
+5.Get the products that have the highest and lowest manufacturing costs.The final output should contain these fields,
+	product_code
+	product
+	manufacturing_cost
+	
+	-- Steps:Get the maximum and minimum manufacturing costs from fact_manufacturing_cost table.
+	-- Inner join dim_product and fact_manufacturing_cost tables and pass  the min and max manufacturing 
+	-- costs in WHERE clause using subquery.
+
+	SELECT p.product_code,p.product,f.manufacturing_cost
+	from fact_manufacturing_cost f INNER JOIN dim_product p
+	ON f.product_code = p.product_code
+	WHERE f.manufacturing_cost =(SELECT MAX(manufacturing_cost) FROM fact_manufacturing_cost)
+	OR f.manufacturing_cost =(SELECT MIN(manufacturing_cost) FROM fact_manufacturing_cost)
+
+6.Generate a report which contains the top 5 customers who received an average high pre_invoice_discount_pct 
+for the fiscal year 2021 and in the
+Indian market. The final output contains these fields,
+	customer_code
+	customer
+	average_discount_percentage
+
+	SELECT d.customer,i.customer_code,ROUND(100.0*AVG(i.pre_invoice_discount_pct),2) AS average_discount_percentage
+	FROM fact_pre_invoice_deductions i INNER JOIN dim_customer d
+	ON i.customer_code = d.customer_code
+	WHERE i.fiscal_year = 2021
+	AND d.market = 'India'
+	GROUP BY i.customer_code
+	ORDER BY average_discount_percentage DESC
+	LIMIT 5
+
+7.Get the complete report of the Gross sales amount for the customer “Atliq Exclusive” for each month. This analysis helps to get an idea of low and
+high-performing months and take strategic decisions.The final report contains these columns:
+	Month
+	Year
+	Gross sales Amount
+
+	-- Step1 : Gross Sales Amount = Gross Price * Sold quantity. Get the gross price,soldquantity and customer data by joining 
+	-- fact_gross_price,fact_sales_monthly and dim_customer tables. Filter the data for Atliq Exclusive and required fiscal years.
+	-- To get the monthly data, group by year and then by month.
+
+	WITH month_sales_tbl AS (
+	SELECT MONTHNAME(s.date) AS Month,s.fiscal_year AS Year,
+	ROUND(SUM(g.gross_price*s.sold_quantity/1000000.0),2) as Gross_sales_amount
+	FROM fact_gross_price g INNER JOIN fact_sales_monthly s
+	ON g.product_code = s.product_code
+	AND g.fiscal_year = s.fiscal_year
+	INNER JOIN dim_customer c
+	ON c.customer_code = s.customer_code
+	WHERE c.customer = 'Atliq Exclusive'
+	AND g.fiscal_year in (2020,2021)
+	GROUP BY Year(s.date),MONTH(s.date)
+	ORDER BY YEAR(s.date),MONTH(s.date)
+	)
+	-- To get the data into more readable and convenient format use the CASE WHEN statement.
+	SELECT Month, MAX(CASE WHEN Year=2020 THEN Gross_sales_amount END) AS fiscal_year_2020,
+	MAX(CASE WHEN Year = 2021 THEN Gross_sales_amount END ) AS fiscal_year_2021
+	FROM month_sales_tbl 
+	GROUP BY Month
+
+
+8.In which quarter of 2020, got the maximum total_sold_quantity? The final output contains these fields sorted by the total_sold_quantity,
+	Quarter
+	total_sold_quantity
+
+
+	SELECT CASE WHEN MONTH(date) IN (9,10,11) THEN 'Q-1'
+		WHEN MONTH(date) IN (12,1,2) THEN 'Q-2'
+		WHEN MONTH(date) IN (3,4,5) THEN 'Q-3'
+		WHEN MONTH(date) IN (6,7,8) THEN 'Q-4'
+		END AS Quarter,
+		ROUND(SUM(sold_quantity)/1000000.0,2) AS Total_Sold_Quantity
+	FROM fact_sales_monthly
+	WHERE fiscal_year = 2020  
+	GROUP BY Quarter
+
+9.Which channel helped to bring more gross sales in the fiscal year 2021 and the percentage of contribution? The final output contains these fields,
+	channel
+	gross_sales_mln
+	percentage
+
+	WITH gross_sales_channel AS(
+	SELECT ROUND(SUM(g.gross_price*s.sold_quantity/1000000.0),2) AS gross_sales_mln,c.channel
+	FROM fact_sales_monthly s INNER JOIN fact_gross_price g
+	ON s.fiscal_year = g.fiscal_year
+	AND s.product_code = g.product_code
+	INNER JOIN dim_customer c
+	ON s.customer_code = c.customer_code
+	WHERE s.fiscal_year = 2021
+	GROUP BY c.channel
+	ORDER BY gross_sales_mln DESC
+	 )
+
+	SELECT gross_sales_mln,channel, ROUND(100.0*gross_sales_mln/t.sum_gross ,2)AS percentage
+	FROM gross_sales_channel
+	CROSS JOIN (SELECT SUM(gross_sales_mln) AS sum_gross FROM gross_sales_channel) t
+
+
+10.Get the Top 3 products in each division that have a high total_sold_quantity in the fiscal_year 2021? The final output contains these
+fields,
+	division
+	product_code
+	product
+	total_sold_quantity
+	rank_order
+
+	WITH sold_qty_table AS(
+	SELECT p.division,p.product_code,CONCAT(p.product,'- ',p.variant) AS product,SUM(s.sold_quantity) AS total_sold_quantity,
+	RANK() OVER(PARTITION BY division ORDER BY SUM(s.sold_quantity) DESC ) AS rank_order
+	FROM dim_product p INNER JOIN fact_sales_monthly s
+	ON p.product_code = s.product_code
+	WHERE s.fiscal_year =2021
+	GROUP BY p.division,p.product_code
+	)
+
+	SELECT division,product_code,product,total_sold_quantity,rank_order    
+	FROM sold_qty_table 
+	WHERE rank_order < 4
+    
+    
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
